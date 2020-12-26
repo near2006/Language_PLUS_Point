@@ -1,0 +1,245 @@
+package com.zm;
+
+import java.io.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
+public class ProcessRfcTxt {
+    public static String parseSection(Queue<String> queue) {
+        String out = null;
+        out = queue.poll();
+        boolean flag = false;
+        for (String x : queue) {
+            if ((x.startsWith(" ") != true && x.contains("          "))
+                    || x.contains("+-+-")
+                    || x.contains(". . .")
+                    || x.contains(" |")) {
+                flag = true;
+            }
+        }
+        while (queue.size() > 1) {
+            String temp = queue.poll();
+            if (temp.equals("\n")) {
+                continue;
+            }
+            if (flag == true) {
+                out = out.concat(temp);
+                out = out.concat("\n");
+                continue;
+            }
+            //去掉空格 \n
+            temp = temp.trim();
+            System.out.println("[" + temp + "]");
+            if (temp.length() > 2) {
+                char first = temp.charAt(0);
+                char second = temp.charAt(1);
+                int begin = temp.indexOf(". ") +1;
+                //可以考虑正则表达式,当前最多只支持9 格式为2.1 xxx 1. xxx
+                if ((first >= '0' && first <= '9')
+                        && (second == '.') && (begin != -1)
+                ) {
+                    int num = begin / 2;
+                    String head = "#";
+                    for (int i = 0; i < num; i++) {
+                        head = head + "#";
+                    }
+                    head += " ";
+                    temp = head + temp;
+                }
+            }
+
+            //去掉\n
+//            temp = temp.substring(0, temp.length() - 2);
+            out = out.concat(temp);
+        }
+        out = out.concat(queue.poll());
+//        out = out.concat("\n");
+        System.out.println(out);
+        return out;
+    }
+
+    public static BufferedReader getReader(String path) {
+        BufferedReader reader = null;
+        File src = new File(path);
+        try {
+
+            InputStreamReader inStream = new InputStreamReader(new FileInputStream(src), "UTF-8");
+            reader = new BufferedReader(inStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return reader;
+    }
+
+    public static BufferedWriter getWriter(String path) {
+        BufferedWriter writer = null;
+        File src = new File(path);
+        try {
+
+            OutputStreamWriter outStream = new OutputStreamWriter(new FileOutputStream(src), "UTF-8");
+            writer = new BufferedWriter(outStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return writer;
+    }
+
+    //src 原始文件名，extern ：前缀
+    static public String changePath(String src, String extern) {
+        String filePath = src;
+        String tempPath = filePath.trim();
+        int index = tempPath.lastIndexOf("\\") + 1;
+        String outPath = tempPath.substring(0, index) + extern + tempPath.substring(index);
+        System.out.println("outPath:" + outPath);
+        return outPath;
+    }
+
+    static public int processSection(String src, String dst) {
+        try {
+            BufferedReader reader = getReader(src);
+            BufferedWriter writer = getWriter(dst);
+            String line = null;
+            boolean findBegin = false; //段落头
+            boolean findEnd = false; //段落尾部
+            Queue<String> queue = new ArrayDeque<>();
+            String lastSection = null;
+            boolean pageFlag = false;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+                if (line.length() == 0) {
+                    line = "\n";
+                }
+                if (findBegin == false) {
+                    findBegin = true;
+                    //输出段落
+                    queue.clear();
+                    queue.offer("\n");
+                    queue.offer(line);
+                    continue;
+                }
+                if (findEnd == false && line.equals("\n")) {
+                    findEnd = true;
+                    queue.offer(line);
+                    String section = ProcessRfcTxt.parseSection(queue);
+                    writer.write(section);
+                    findBegin = false;
+                    findEnd = false;
+                    continue;
+                }
+                queue.offer(line);
+            }
+            if (findBegin) {
+                queue.offer("\n");
+                String section = ProcessRfcTxt.parseSection(queue);
+                writer.write(section);
+            }
+            writer.close();
+            reader.close();
+            System.out.println("parse txt success");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // write your code here
+        System.out.print("processSetion");
+        return 0;
+    }
+
+    //处理page翻页
+    static public int processPage(String src, String dst) {
+        try {
+            BufferedReader reader = getReader(src);
+            BufferedWriter writer = getWriter(dst);
+            List<String> list = new ArrayList<>();
+            String line = null;
+            int index = 0;
+            int findPage = 0;
+            while ((line = reader.readLine()) != null) {
+                if (line.length() == 1 && line.charAt(0) == 0x0C) {
+                    System.out.println("fine page key.");
+                    //回退最后的几个字段以及未来的一个
+                    findPage = 1;
+                    index = list.size() - 1;
+                    list.remove(index);
+                    while (list.isEmpty() != true) {
+                        index = list.size() - 1;
+                        if (list.get(index).equals("") == true) {
+                            list.remove(index);
+                            continue;
+                        }
+                        break;
+                    }
+                    continue;
+                }
+                if (findPage > 0) {
+                    if (findPage == 1) {
+                        findPage = 2;
+                        continue;
+                    }
+                    if (line.length() == 0) {
+                        continue;
+                    }
+                    if (line.startsWith(" ") == true) {
+                        list.add("");
+                        list.add(line);
+                    } else {
+                        index = list.size() - 1;
+                        String temp = list.get(index);
+                        temp = temp.concat(line);
+                        list.remove(index);
+                        list.add(temp);
+                    }
+                    list.isEmpty();
+                    //输出文件
+                    while (list.isEmpty() == false) {
+                        String temp = list.get(0);
+                        writer.write(temp);
+                        writer.write("\n");
+                        list.remove(0);
+                    }
+                    findPage = 0;
+                    index = 0;
+                    list.clear();
+                    continue;
+                }
+                list.add(line);
+            }
+            //输出文件
+            while (list.isEmpty() == false) {
+                String temp = list.get(0);
+                writer.write(temp);
+                writer.write("\n");
+                list.remove(0);
+            }
+            writer.close();
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        System.out.print("processPage");
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        String in = args[0];
+        if (in.endsWith(".txt") != true) {
+            System.out.println("file name is invalid.");
+            return;
+        }
+        String pageFile = ProcessRfcTxt.changePath(in, "page_");
+        int ret = 0;
+        if ((ret = ProcessRfcTxt.processPage(in, pageFile)) != 0) {
+            System.out.println("processPage failed.ret:" + ret);
+            return;
+        }
+        String outFile = ProcessRfcTxt.changePath(in, "output_");
+        ret = ProcessRfcTxt.processSection(pageFile, outFile);
+        System.out.println("processSection ret:" + ret);
+        return;
+    }
+
+}
