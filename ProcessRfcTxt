@@ -19,6 +19,7 @@ public class ProcessRfcTxt {
                 flag = true;
             }
         }
+        boolean findFirst = false;
         while (queue.size() > 1) {
             String temp = queue.poll();
             if (temp.equals("\n")) {
@@ -29,26 +30,51 @@ public class ProcessRfcTxt {
                 out = out.concat("\n");
                 continue;
             }
+            if (findFirst == false) {
+                if (temp.length() > 2) {
+                    findFirst = true;
+                }
+                String temp2 =  temp.trim();
+                if (temp2.length() > 2) {
+                    char first = temp2.charAt(0);
+                    char second = temp2.charAt(1);
+                    int begin = temp2.indexOf(". ") +1;
+                    //可以考虑正则表达式,当前最多只支持9 格式为2.1 xxx 1. xxx
+                    if ((first >= '0' && first <= '9')
+                            && (second == '.') && (begin != -1)
+                    ) {
+                        int num = begin / 2;
+                        String head = "#";
+                        for (int i = 0; i < num; i++) {
+                            head = head + "#";
+                        }
+                        head += " ";
+                        temp = head + temp2;
+                    }
+                }
+                out = out.concat(temp);
+                continue;
+            }
             //去掉空格 \n
             temp = temp.trim();
-            System.out.println("[" + temp + "]");
-            if (temp.length() > 2) {
-                char first = temp.charAt(0);
-                char second = temp.charAt(1);
-                int begin = temp.indexOf(". ") +1;
-                //可以考虑正则表达式,当前最多只支持9 格式为2.1 xxx 1. xxx
-                if ((first >= '0' && first <= '9')
-                        && (second == '.') && (begin != -1)
-                ) {
-                    int num = begin / 2;
-                    String head = "#";
-                    for (int i = 0; i < num; i++) {
-                        head = head + "#";
-                    }
-                    head += " ";
-                    temp = head + temp;
-                }
-            }
+//            System.out.println("[" + temp + "]");
+//            if (temp.length() > 2) {
+//                char first = temp.charAt(0);
+//                char second = temp.charAt(1);
+//                int begin = temp.indexOf(". ") +1;
+//                //可以考虑正则表达式,当前最多只支持9 格式为2.1 xxx 1. xxx
+//                if ((first >= '0' && first <= '9')
+//                        && (second == '.') && (begin != -1)
+//                ) {
+//                    int num = begin / 2;
+//                    String head = "#";
+//                    for (int i = 0; i < num; i++) {
+//                        head = head + "#";
+//                    }
+//                    head += " ";
+//                    temp = head + temp;
+//                }
+//            }
 
             //去掉\n
 //            temp = temp.substring(0, temp.length() - 2);
